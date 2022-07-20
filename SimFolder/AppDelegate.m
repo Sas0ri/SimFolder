@@ -13,6 +13,7 @@
 @property (nonatomic, copy) NSString *name;
 @property (nonatomic, copy) NSString *identifier;
 @property (nonatomic, copy) NSString *containerPath;
+@property (nonatomic, copy) NSString *path;
 @end
 
 @interface SFDevice : NSObject
@@ -60,6 +61,12 @@
         }
         for (SFApp *app in device.apps) {
             NSMenuItem *subItem = [[NSMenuItem alloc] initWithTitle:app.name action:@selector(menuAction:) keyEquivalent:@""];
+            subItem.image = [[NSImage alloc] initWithContentsOfFile:[app.path stringByAppendingPathComponent:@"AppIcon60x60@2x.png"]];
+            if (subItem.image == nil) {
+                subItem.image = [NSImage imageNamed:NSImageNameFolder];
+            }
+            subItem.image.size = CGSizeMake(14, 14);
+      
             [subMenu addItem:subItem];
         }
         [self.menu addItem:item];
@@ -109,8 +116,10 @@
         NSArray *devices = deviceTypes[deviceType];
         for (NSDictionary *device in devices) {
             if ([device[@"state"] isEqualToString:@"Booted"]) {
+                NSString *version = [deviceType stringByReplacingOccurrencesOfString:@"com.apple.CoreSimulator.SimRuntime.iOS-" withString:@""];
+                version = [version stringByReplacingOccurrencesOfString:@"-" withString:@"."];
                 SFDevice *d = [SFDevice new];
-                d.name = device[@"name"];
+                d.name = [device[@"name"] stringByAppendingFormat:@" %@", version];
                 d.identifier = device[@"udid"];
                 [self getInstalledAppsOfDevice:d];
                 [bootedDevices addObject:d];
@@ -142,10 +151,12 @@
     NSDictionary *dic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingAllowFragments error:nil];
     NSMutableArray *apps = [NSMutableArray array];
     for (NSString *key in dic.allKeys) {
+        NSDictionary *appDic = dic[key];
         SFApp *app = [SFApp new];
         app.identifier = key;
-        app.name = dic[key][@"CFBundleDisplayName"];
-        app.containerPath = dic[key][@"DataContainer"];
+        app.name = appDic[@"CFBundleDisplayName"];
+        app.containerPath = appDic[@"DataContainer"];
+        app.path = appDic[@"Path"];
         if (!app.containerPath) {
             app.containerPath = @"";
         }
@@ -167,3 +178,4 @@
 @implementation SFDevice
 
 @end
+
